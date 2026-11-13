@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Tarefas - Padrão MVC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <header class="mb-6">
+            <h1 class="text-2xl font-bold text-slate-900">Minhas Tarefas</h1>
+            <p class="text-sm text-slate-500">Aplicação MVC com Front-end Dinâmico</p>
+        </header>
+
+        <form id="task-form" class="flex gap-2 mb-6">
+            <input 
+                type="text" 
+                id="task-input" 
+                placeholder="O que precisa ser feito?" 
+                required
+                class="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+            <button 
+                type="submit" 
+                class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition"
+            >
+                Adicionar
+            </button>
+        </form>
+
+        <ul id="task-list" class="space-y-3"></ul>
+    </div>
+
+    <script>
+        const taskForm = document.getElementById('task-form');
+        const taskInput = document.getElementById('task-input');
+        const taskList = document.getElementById('task-list');
+
+        async function fetchTasks() {
+            try {
+                const response = await fetch('/api/tasks');
+                const tasks = await response.json();
+                renderTasks(tasks);
+            } catch (error) {
+                console.error('Erro ao carregar tarefas:', error);
+            }
+        }
+
+        function renderTasks(tasks) {
+            taskList.innerHTML = '';
+            if (tasks.length === 0) {
+                taskList.innerHTML = '<p class="text-center text-slate-400 py-4">Nenhuma tarefa cadastrada.</p>';
+                return;
+            }
+
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = `flex items-center justify-between p-3 rounded-lg border ${task.done ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-white border-slate-200 shadow-sm'}`;
+                
+                li.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${task.done ? 'checked' : ''} onclick="toggleTask(${task.id})" class="w-4 h-4 text-blue-600 rounded cursor-pointer">
+                        <span class="${task.done ? 'line-through text-slate-400' : 'text-slate-700'} font-medium">${escapeHtml(task.title)}</span>
+                    </div>
+                    <button onclick="deleteTask(${task.id})" class="text-red-500 hover:text-red-700 text-sm font-semibold">Excluir</button>
+                `;
+                taskList.appendChild(li);
+            });
+        }
+
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = taskInput.value.trim();
+            if (!title) return;
+
+            await fetch('/api/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title })
+            });
+
+            taskInput.value = '';
+            fetchTasks();
+        });
+
+        async function toggleTask(id) {
+            await fetch(`/api/tasks/${id}/toggle`, { method: 'PATCH' });
+            fetchTasks();
+        }
+
+        async function deleteTask(id) {
+            await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+            fetchTasks();
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        fetchTasks();
+    </script>
+</body>
+</html>
